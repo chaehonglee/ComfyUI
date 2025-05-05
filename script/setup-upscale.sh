@@ -47,6 +47,11 @@ clone https://github.com/bash-j/mikey_nodes
 clone https://github.com/pythongosssss/ComfyUI-Custom-Scripts
 clone https://github.com/Suzie1/ComfyUI_Comfyroll_CustomNodes
 clone https://github.com/jags111/efficiency-nodes-comfyui
+clone https://github.com/yolain/ComfyUI-Easy-Use
+clone https://github.com/cubiq/ComfyUI_essentials
+clone https://github.com/city96/ComfyUI-GGUF
+clone https://github.com/calcuis/gguf
+clone https://github.com/lldacing/ComfyUI_PuLID_Flux_ll
 
 # -------- 2. Python deps -----------------------------------------------------
 if [ "$PIP_OK" != "--no-pip" ]; then
