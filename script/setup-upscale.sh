@@ -3,8 +3,8 @@
 #  setup-upscale.sh — install custom nodes and helper weights
 #
 #  Usage examples:
-#      bash setup-upscale.sh                # default ~/ComfyUI
-#      bash setup-upscale.sh /opt/ComfyUI   # explicit path
+#      bash setup-upscale.sh                   # default ~/ComfyUI
+#      bash setup-upscale.sh /opt/ComfyUI      # explicit path
 #      bash setup-upscale.sh /opt/ComfyUI --no-pip   # skip pip deps
 # -----------------------------------------------------------------
 set -euo pipefail
@@ -27,10 +27,10 @@ clone () {
   local DIR="$NODE_DIR/$(basename "$REPO")"
   if [ -d "$DIR/.git" ]; then
     echo "Updating $(basename "$REPO") ..."
-    git -C "$DIR" pull --quiet
+    git -C "$DIR" pull
   else
     echo "Cloning $(basename "$REPO") ..."
-    git clone --quiet --depth 1 "$REPO" "$DIR"
+    git clone --depth 1 "$REPO" "$DIR"
   fi
 }
 
@@ -46,15 +46,32 @@ clone https://github.com/chrisgoringe/cg-use-everywhere
 clone https://github.com/bash-j/mikey_nodes
 clone https://github.com/pythongosssss/ComfyUI-Custom-Scripts
 clone https://github.com/Suzie1/ComfyUI_Comfyroll_CustomNodes
+clone https://github.com/jags111/efficiency-nodes-comfyui
 
-# -------- 2. runtime python deps for Impact-Pack (Ultralytics & SAM) ---------
+# -------- 2. Python deps -----------------------------------------------------
 if [ "$PIP_OK" != "--no-pip" ]; then
-  echo "Installing Ultralytics + timm (sudo may prompt)..."
-  python -m pip install --quiet --upgrade ultralytics timm onnx
+  echo "Checking for requirements.txt files in custom_nodes ..."
+  mapfile -t REQS < <(find "$NODE_DIR" -maxdepth 3 -type f -iname "requirements*.txt")
+  if (( ${#REQS[@]} )); then
+    for FILE in "${REQS[@]}"; do
+      echo "Installing deps from ${FILE#"$NODE_DIR/"}"
+      python -m pip install --upgrade -r "$FILE"
+    done
+  else
+    echo "No requirements files found."
+  fi
+
+  python - <<'PY'
+import importlib, subprocess, sys
+missing = [m for m in ("ultralytics", "timm", "onnx") if importlib.util.find_spec(m) is None]
+if missing:
+    print(f"Installing fallback deps: {' '.join(missing)}")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", *missing])
+PY
 fi
 
 # -------- 3. helper weights / checkpoints -----------------------------------
-echo "Downloading helper models (HF login may be required)..."
+echo "Downloading helper models (HF login may be required) ..."
 
 mkdir -p \
   "$COMFY_DIR/models/ultralytics/bbox" \
@@ -66,12 +83,6 @@ mkdir -p \
 huggingface-cli download --resume-download Bingsu/adetailer \
   face_yolov8m.pt \
   --local-dir "$COMFY_DIR/models/ultralytics/bbox" \
-  --local-dir-use-symlinks False
-
-# SAM-B weights
-huggingface-cli download --resume-download Gourieff/ReActor \
-  sam_vit_b_01ec64.pth \
-  --local-dir "$COMFY_DIR/models/sam" \
   --local-dir-use-symlinks False
 
 # ESRGAN 4x upscaler
@@ -87,9 +98,21 @@ huggingface-cli download --resume-download \
   --local-dir "$COMFY_DIR/models/loras" \
   --local-dir-use-symlinks False
 
+# Layermask despendencies
+mkdir -p "$COMFY_DIR/models/vitmatte"
+huggingface-cli download --resume-download \
+  chflame163/ComfyUI_LayerStyle \
+  --local-dir "$COMFY_DIR/models" \
+  --local-dir-use-symlinks False
+
+huggingface-cli download --resume-download \
+  hustvl/vitmatte-small-composition-1k \
+  --local-dir "$COMFY_DIR/models/vitmatte" \
+  --local-dir-use-symlinks False
+
 echo
-echo "SUCCESS: Custom nodes and upscale assets installed."
-echo " - Restart ComfyUI (and clear browser cache) to load new nodes."
-if [ "$PIP_OK" = "--no-pip" ]; then
-  echo " - Remember to ensure Ultralytics + timm are available in your venv."
+echo "All custom nodes, their Python deps, and helper models are installed."
+echo " - Restart ComfyUI (and clear your browser cache) to load the new nodes."
+if [ "$PIP_OK" == "--no-pip" ]; then
+  echo " - You skipped pip installs; make sure required libs are present manually."
 fi
