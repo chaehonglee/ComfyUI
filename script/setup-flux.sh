@@ -54,4 +54,14 @@ huggingface-cli download --resume-download comfyanonymous/flux_text_encoders \
   --local-dir "$COMFY_DIR/models/text_encoders" \
   --local-dir-use-symlinks False
 
+huggingface-cli download --resume-download black-forest-labs/FLUX.1-Fill-dev \
+  flux1-fill-dev.safetensors \
+  --local-dir "$COMFY_DIR/models/fluxfill/" \
+  --local-dir-use-symlinks False
+
+huggingface-cli download --resume-download black-forest-labs/FLUX.1-Fill-dev \
+  ae.safetensors \
+  --local-dir "$COMFY_DIR/models/fluxfill/" \
+  --local-dir-use-symlinks False
+
 echo "All Flux‑Dev weights are in place. Launch ComfyUI and load your workflow!"
